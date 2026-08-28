@@ -3,21 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Caza de Gemas AR</title>
+  <title>Desafío de Memoria PWA</title>
 
-  <!-- Permitir conexiones externas sin bloqueos en WebView / APK -->
-  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
-
-  <!-- Configuración PWA y Navegador -->
+  <!-- Configuración PWA y Metas -->
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3612/3612580.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#000000">
-
-  <!-- Librerías de Realidad Aumentada ultrarrápidas y estables -->
-  <script src="https://unpkg.com/aframe@1.3.0/dist/aframe-master.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/build/aframe-ar.min.js"></script>
+  <meta name="theme-color" content="#0f172a">
 
   <style>
     * {
@@ -31,49 +24,88 @@
       padding: 0;
       width: 100%;
       height: 100%;
-      overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #000000;
-    }
-
-    /* Panel de Control Flotante (HUD) */
-    #hud {
-      position: fixed;
-      top: 15px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 9999;
-      width: 90%;
-      max-width: 360px;
-      background: rgba(15, 23, 42, 0.85);
+      background-color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       color: #ffffff;
-      padding: 12px 20px;
-      border-radius: 16px;
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-      text-align: center;
-      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
     }
 
-    .hud-stats {
+    /* HUD Header */
+    #hud {
+      width: 90%;
+      max-width: 400px;
+      margin-top: 20px;
+      background: rgba(30, 41, 59, 0.8);
+      padding: 15px 20px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-weight: 800;
-      font-size: 18px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }
 
-    #timer-display { color: #f59e0b; }
-    #score-display { color: #10b981; }
+    .stat-box {
+      text-align: center;
+    }
 
-    #instructions {
+    .stat-label {
       font-size: 12px;
-      margin-top: 6px;
       color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
-    /* Pantalla Fin de Juego */
+    .stat-value {
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    #score-display { color: #10b981; }
+    #timer-display { color: #f59e0b; }
+
+    /* Tablero de Cartas */
+    #game-board {
+      width: 90%;
+      max-width: 400px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .card {
+      aspect-ratio: 1;
+      background-color: #1e293b;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      cursor: pointer;
+      border: 2px solid #334155;
+      transition: transform 0.2s, background-color 0.2s;
+    }
+
+    .card:active {
+      transform: scale(0.95);
+    }
+
+    .card.flipped {
+      background-color: #3b82f6;
+      border-color: #60a5fa;
+    }
+
+    .card.matched {
+      background-color: #10b981;
+      border-color: #34d399;
+      pointer-events: none;
+    }
+
+    /* Modal Fin de Juego */
     #game-over-modal {
       display: none;
       position: fixed;
@@ -81,167 +113,162 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.85);
-      z-index: 10000;
+      background: rgba(15, 23, 42, 0.95);
+      z-index: 100;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      color: #ffffff;
-      text-align: center;
       padding: 20px;
     }
 
     #game-over-modal h1 {
-      font-size: 32px;
+      font-size: 36px;
+      color: #38bdf8;
       margin-bottom: 10px;
-      color: #f43f5e;
     }
 
     .btn-restart {
-      margin-top: 20px;
+      margin-top: 25px;
       background: #2563eb;
       color: white;
       border: none;
-      padding: 14px 28px;
+      padding: 14px 32px;
       font-size: 18px;
       font-weight: bold;
       border-radius: 12px;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
     }
   </style>
 </head>
 <body>
 
-  <!-- HUD del Jugador -->
+  <!-- Marcadores -->
   <div id="hud">
-    <div class="hud-stats">
-      <span id="score-display">Gemas: 0</span>
-      <span id="timer-display">Tiempo: 30s</span>
+    <div class="stat-box">
+      <div class="stat-label">Parejas</div>
+      <div class="stat-value" id="score-display">0 / 6</div>
     </div>
-    <div id="instructions">Apunta al marcador HIRO y toca las gemas rápidamente</div>
+    <div class="stat-box">
+      <div class="stat-label">Tiempo</div>
+      <div class="stat-value" id="timer-display">40s</div>
+    </div>
   </div>
 
-  <!-- Pantalla de Resultados -->
+  <!-- Tablero -->
+  <div id="game-board"></div>
+
+  <!-- Modal Resultados -->
   <div id="game-over-modal">
-    <h1>¡Tiempo Agotado!</h1>
-    <p id="final-score" style="font-size: 20px;">Conseguiste 0 gemas</p>
-    <button class="btn-restart" onclick="restartGame()">Jugar de Nuevo</button>
+    <h1 id="modal-title">¡Juego Terminado!</h1>
+    <p id="final-score" style="font-size: 20px; color: #cbd5e1;"></p>
+    <button class="btn-restart" onclick="initGame()">Jugar de Nuevo</button>
   </div>
 
-  <!-- Escena de Realidad Aumentada -->
-  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;">
-    
-    <!-- Marcador HIRO con suavizado de rastreo -->
-    <a-marker preset="hiro" smooth="true" smoothCount="5" smoothTolerance="0.02" smoothThreshold="2">
-      
-      <!-- Contenedor principal de la gema -->
-      <a-entity id="gem-container" position="0 0.5 0">
-        
-        <!-- Objeto visual (Gema) -->
-        <a-entity 
-          id="target-gem" 
-          geometry="primitive: octahedron; radius: 0.4"
-          material="color: #10b981; roughness: 0.2; metalness: 0.8" 
-          animation="property: rotation; to: 0 360 0; loop: true; dur: 2500">
-        </a-entity>
-
-        <!-- Hitbox invisible extra grande para toques fáciles -->
-        <a-sphere 
-          class="clickable"
-          radius="0.8" 
-          material="transparent: true; opacity: 0.0" 
-          position="0 0 0">
-        </a-sphere>
-
-      </a-entity>
-
-    </a-marker>
-
-    <!-- Cámara táctil configurada para respuesta inmediata -->
-    <a-entity camera raycaster="objects: .clickable; interval: 50;" cursor="rayOrigin: mouse; fuse: false"></a-entity>
-
-  </a-scene>
-
-  <!-- Lógica Interactiva -->
   <script>
-    let score = 0;
-    let timeLeft = 30;
+    const emojis = ['🚀', '👾', '💎', '🔥', '⚡', '🎮'];
+    let cards = [];
+    let flippedCards = [];
+    let matchedPairs = 0;
+    let timeLeft = 40;
     let timerInterval = null;
-    let isGameActive = true;
+    let canFlip = true;
 
-    const gemContainer = document.getElementById('gem-container');
-    const gemVisual = document.getElementById('target-gem');
+    const board = document.getElementById('game-board');
     const scoreDisplay = document.getElementById('score-display');
     const timerDisplay = document.getElementById('timer-display');
     const gameOverModal = document.getElementById('game-over-modal');
+    const modalTitle = document.getElementById('modal-title');
     const finalScore = document.getElementById('final-score');
 
-    const gemColors = ['#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b'];
-
-    function startTimer() {
-      timerInterval = setInterval(() => {
-        timeLeft--;
-        timerDisplay.textContent = `Tiempo: ${timeLeft}s`;
-
-        if (timeLeft <= 0) {
-          endGame();
-        }
-      }, 1000);
-    }
-
-    function respawnGem() {
-      const randomX = (Math.random() - 0.5) * 1.4;
-      const randomZ = (Math.random() - 0.5) * 1.4;
-      const randomY = 0.3 + Math.random() * 0.4;
-
-      const randomColor = gemColors[Math.floor(Math.random() * gemColors.length)];
-
-      gemContainer.setAttribute('position', `${randomX} ${randomY} ${randomZ}`);
-      gemVisual.setAttribute('material', 'color', randomColor);
-    }
-
-    function onGemTouch(e) {
-      if (!isGameActive) return;
-      e.preventDefault();
-
-      score++;
-      scoreDisplay.textContent = `Gemas: ${score}`;
-
-      gemVisual.setAttribute('scale', '0.5 0.5 0.5');
-      setTimeout(() => {
-        gemVisual.setAttribute('scale', '1 1 1');
-        respawnGem();
-      }, 80);
-    }
-
-    gemContainer.addEventListener('mousedown', onGemTouch);
-    gemContainer.addEventListener('touchstart', onGemTouch);
-
-    function endGame() {
-      isGameActive = false;
-      clearInterval(timerInterval);
-      finalScore.textContent = `Conseguiste un total de ${score} gemas`;
-      gameOverModal.style.display = 'flex';
-      gemContainer.setAttribute('visible', 'false');
-    }
-
-    function restartGame() {
-      score = 0;
-      timeLeft = 30;
-      isGameActive = true;
-
-      scoreDisplay.textContent = 'Gemas: 0';
-      timerDisplay.textContent = 'Tiempo: 30s';
+    function initGame() {
+      board.innerHTML = '';
+      flippedCards = [];
+      matchedPairs = 0;
+      timeLeft = 40;
+      canFlip = true;
+      
+      scoreDisplay.textContent = `0 / ${emojis.length}`;
+      timerDisplay.textContent = `${timeLeft}s`;
       gameOverModal.style.display = 'none';
-      gemContainer.setAttribute('visible', 'true');
 
-      respawnGem();
-      startTimer();
+      clearInterval(timerInterval);
+      timerInterval = setInterval(updateTimer, 1000);
+
+      cards = [...emojis, ...emojis].sort(() => Math.random() - 0.5);
+
+      cards.forEach((emoji, index) => {
+        const card = document.createElement('div');
+        card.classList.add('card');
+        card.dataset.emoji = emoji;
+        card.dataset.index = index;
+        card.addEventListener('click', flipCard);
+        board.appendChild(card);
+      });
     }
 
-    window.onload = startTimer;
-  </script>
+    function updateTimer() {
+      timeLeft--;
+      timerDisplay.textContent = `${timeLeft}s`;
 
+      if (timeLeft <= 0) {
+        endGame(false);
+      }
+    }
+
+    function flipCard() {
+      if (!canFlip || this.classList.contains('flipped') || this.classList.contains('matched')) return;
+
+      this.classList.add('flipped');
+      this.textContent = this.dataset.emoji;
+      flippedCards.push(this);
+
+      if (flippedCards.length === 2) {
+        checkMatch();
+      }
+    }
+
+    function checkMatch() {
+      canFlip = false;
+      const [card1, card2] = flippedCards;
+
+      if (card1.dataset.emoji === card2.dataset.emoji) {
+        card1.classList.add('matched');
+        card2.classList.add('matched');
+        matchedPairs++;
+        scoreDisplay.textContent = `${matchedPairs} / ${emojis.length}`;
+        flippedCards = [];
+        canFlip = true;
+
+        if (matchedPairs === emojis.length) {
+          endGame(true);
+        }
+      } else {
+        setTimeout(() => {
+          card1.classList.remove('flipped');
+          card2.classList.remove('flipped');
+          card1.textContent = '';
+          card2.textContent = '';
+          flippedCards = [];
+          canFlip = true;
+        }, 800);
+      }
+    }
+
+    function endGame(isWin) {
+      clearInterval(timerInterval);
+      gameOverModal.style.display = 'flex';
+      
+      if (isWin) {
+        modalTitle.textContent = '¡Felicidades! 🎉';
+        finalScore.textContent = `Ganaste con ${timeLeft} segundos restantes.`;
+      } else {
+        modalTitle.textContent = '¡Tiempo Agotado! ⏳';
+        finalScore.textContent = `Lograste encontrar ${matchedPairs} parejas.`;
+      }
+    }
+
+    window.onload = initGame;
+  </script>
 </body>
 </html>
