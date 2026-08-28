@@ -5,12 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Caza de Gemas AR</title>
 
+  <!-- PWA & Metas -->
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3612/3612580.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#000000">
 
+  <!-- Librerías AR -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
@@ -30,7 +32,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    /* Panel de Control Flotante (HUD) */
+    /* HUD */
     #hud {
       position: fixed;
       top: 15px;
@@ -67,7 +69,7 @@
       color: #94a3b8;
     }
 
-    /* Pantalla de Fin de Juego */
+    /* Pantalla Fin de Juego */
     #game-over-modal {
       display: none;
       position: fixed;
@@ -107,41 +109,65 @@
 </head>
 <body>
 
+  <!-- HUD -->
   <div id="hud">
     <div class="hud-stats">
       <span id="score-display">Gemas: 0</span>
       <span id="timer-display">Tiempo: 30s</span>
     </div>
-    <div id="instructions">Apunta al marcador HIRO y toca las gemas antes de que expiren</div>
+    <div id="instructions">Apunta al marcador HIRO y toca las gemas rápidamente</div>
   </div>
 
+  <!-- Modal Resultados -->
   <div id="game-over-modal">
     <h1>¡Tiempo Agotado!</h1>
     <p id="final-score" style="font-size: 20px;">Conseguiste 0 gemas</p>
     <button class="btn-restart" onclick="restartGame()">Jugar de Nuevo</button>
   </div>
 
-  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-    <a-marker preset="hiro">
-      <a-entity 
-        id="target-gem" 
-        geometry="primitive: octahedron; radius: 0.4"
-        material="color: #10b981; roughness: 0.2; metalness: 0.8" 
-        position="0 0.5 0"
-        animation="property: rotation; to: 0 360 0; loop: true; dur: 2500">
+  <!-- Escena de Realidad Aumentada con suavizado de rastreo -->
+  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;">
+    
+    <!-- Marcador HIRO con suavizado (smooth) -->
+    <a-marker preset="hiro" smooth="true" smoothCount="5" smoothTolerance="0.02" smoothThreshold="2">
+      
+      <!-- Grupo contenedor principal -->
+      <a-entity id="gem-container" position="0 0.5 0">
+        
+        <!-- Objeto visual (Gema) -->
+        <a-entity 
+          id="target-gem" 
+          geometry="primitive: octahedron; radius: 0.4"
+          material="color: #10b981; roughness: 0.2; metalness: 0.8" 
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 2500">
+        </a-entity>
+
+        <!-- Hitbox invisible extra grande (facilita enormemente el toque táctil) -->
+        <a-sphere 
+          class="clickable"
+          radius="0.8" 
+          material="transparent: true; opacity: 0.0" 
+          position="0 0 0">
+        </a-sphere>
+
       </a-entity>
+
     </a-marker>
 
-    <a-entity camera raycaster="objects: #target-gem" cursor="rayOrigin: mouse"></a-entity>
+    <!-- Cámara optimizada para detectar toques inmediatos -->
+    <a-entity camera raycaster="objects: .clickable; interval: 50;" cursor="rayOrigin: mouse; fuse: false"></a-entity>
+
   </a-scene>
 
+  <!-- Lógica -->
   <script>
     let score = 0;
     let timeLeft = 30;
     let timerInterval = null;
     let isGameActive = true;
 
-    const gem = document.getElementById('target-gem');
+    const gemContainer = document.getElementById('gem-container');
+    const gemVisual = document.getElementById('target-gem');
     const scoreDisplay = document.getElementById('score-display');
     const timerDisplay = document.getElementById('timer-display');
     const gameOverModal = document.getElementById('game-over-modal');
@@ -149,7 +175,6 @@
 
     const gemColors = ['#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b'];
 
-    // Iniciar el temporizador
     function startTimer() {
       timerInterval = setInterval(() => {
         timeLeft--;
@@ -161,43 +186,45 @@
       }, 1000);
     }
 
-    // Mover la gema a una posición aleatoria dentro del marcador
     function respawnGem() {
-      const randomX = (Math.random() - 0.5) * 1.6; // Rango -0.8 a 0.8
-      const randomZ = (Math.random() - 0.5) * 1.6;
-      const randomY = 0.3 + Math.random() * 0.5;   // Altura variante
+      const randomX = (Math.random() - 0.5) * 1.4;
+      const randomZ = (Math.random() - 0.5) * 1.4;
+      const randomY = 0.3 + Math.random() * 0.4;
 
       const randomColor = gemColors[Math.floor(Math.random() * gemColors.length)];
 
-      gem.setAttribute('position', `${randomX} ${randomY} ${randomZ}`);
-      gem.setAttribute('material', 'color', randomColor);
+      gemContainer.setAttribute('position', `${randomX} ${randomY} ${randomZ}`);
+      gemVisual.setAttribute('material', 'color', randomColor);
     }
 
-    // Evento de toque/clic en la gema
-    gem.addEventListener('click', function () {
+    // Función unificada para captura táctil/clic instantánea
+    function onGemTouch(e) {
       if (!isGameActive) return;
+      e.preventDefault();
 
       score++;
       scoreDisplay.textContent = `Gemas: ${score}`;
 
-      // Pequeña animación de impacto
-      gem.setAttribute('scale', '0.5 0.5 0.5');
+      // Feedback de escala
+      gemVisual.setAttribute('scale', '0.5 0.5 0.5');
       setTimeout(() => {
-        gem.setAttribute('scale', '1 1 1');
+        gemVisual.setAttribute('scale', '1 1 1');
         respawnGem();
-      }, 100);
-    });
+      }, 80);
+    }
 
-    // Finalizar el juego
+    // Escuchar toques en todo el contenedor (Gema + Hitbox transparente)
+    gemContainer.addEventListener('mousedown', onGemTouch);
+    gemContainer.addEventListener('touchstart', onGemTouch);
+
     function endGame() {
       isGameActive = false;
       clearInterval(timerInterval);
       finalScore.textContent = `Conseguiste un total de ${score} gemas`;
       gameOverModal.style.display = 'flex';
-      gem.setAttribute('visible', 'false');
+      gemContainer.setAttribute('visible', 'false');
     }
 
-    // Reiniciar la partida
     function restartGame() {
       score = 0;
       timeLeft = 30;
@@ -206,20 +233,18 @@
       scoreDisplay.textContent = 'Gemas: 0';
       timerDisplay.textContent = 'Tiempo: 30s';
       gameOverModal.style.display = 'none';
-      gem.setAttribute('visible', 'true');
+      gemContainer.setAttribute('visible', 'true');
 
       respawnGem();
       startTimer();
     }
 
-    // Iniciar la cuenta regresiva al cargar la app
     window.onload = startTimer;
 
-    // Registro del Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .catch((err) => console.error('Error al registrar SW:', err));
+          .catch((err) => console.error('Error SW:', err));
       });
     }
   </script>
