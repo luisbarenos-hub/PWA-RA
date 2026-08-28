@@ -1,4 +1,164 @@
-<!-- Lógica -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Caza de Gemas AR</title>
+
+  <!-- Permitir peticiones y scripts externos dentro de la APK (Solución a pantalla en blanco) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
+
+  <!-- PWA & Metas -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3612/3612580.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+
+  <!-- Librerías AR (Usando CDNjs/JSDelivr compatibles con WebView) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.2.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/aframe/build/aframe-ar.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #000;
+    }
+
+    /* HUD */
+    #hud {
+      position: fixed;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      width: 90%;
+      max-width: 360px;
+      background: rgba(15, 23, 42, 0.85);
+      color: #ffffff;
+      padding: 12px 20px;
+      border-radius: 16px;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .hud-stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 800;
+      font-size: 18px;
+    }
+
+    #timer-display { color: #f59e0b; }
+    #score-display { color: #10b981; }
+
+    #instructions {
+      font-size: 12px;
+      margin-top: 6px;
+      color: #94a3b8;
+    }
+
+    /* Pantalla Fin de Juego */
+    #game-over-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 10000;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+
+    #game-over-modal h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+      color: #f43f5e;
+    }
+
+    .btn-restart {
+      margin-top: 20px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-stats">
+      <span id="score-display">Gemas: 0</span>
+      <span id="timer-display">Tiempo: 30s</span>
+    </div>
+    <div id="instructions">Apunta al marcador HIRO y toca las gemas rápidamente</div>
+  </div>
+
+  <!-- Modal Resultados -->
+  <div id="game-over-modal">
+    <h1>¡Tiempo Agotado!</h1>
+    <p id="final-score" style="font-size: 20px;">Conseguiste 0 gemas</p>
+    <button class="btn-restart" onclick="restartGame()">Jugar de Nuevo</button>
+  </div>
+
+  <!-- Escena de Realidad Aumentada -->
+  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;">
+    
+    <a-marker preset="hiro" smooth="true" smoothCount="5" smoothTolerance="0.02" smoothThreshold="2">
+      
+      <a-entity id="gem-container" position="0 0.5 0">
+        
+        <a-entity 
+          id="target-gem" 
+          geometry="primitive: octahedron; radius: 0.4"
+          material="color: #10b981; roughness: 0.2; metalness: 0.8" 
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 2500">
+        </a-entity>
+
+        <a-sphere 
+          class="clickable"
+          radius="0.8" 
+          material="transparent: true; opacity: 0.0" 
+          position="0 0 0">
+        </a-sphere>
+
+      </a-entity>
+
+    </a-marker>
+
+    <a-entity camera raycaster="objects: .clickable; interval: 50;" cursor="rayOrigin: mouse; fuse: false"></a-entity>
+
+  </a-scene>
+
+  <!-- Lógica -->
   <script>
     let score = 0;
     let timeLeft = 30;
@@ -77,5 +237,6 @@
 
     window.onload = startTimer;
   </script>
+
 </body>
 </html>
