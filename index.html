@@ -2,30 +2,23 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <!-- Meta etiqueta responsive ajustada para móviles y APK -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Caza de Gemas AR</title>
 
-  <title>Juego AR PWA</title>
-
-  <!-- Enlace al Web App Manifest -->
   <link rel="manifest" href="manifest.json">
-
-  <!-- Configuración e Iconos para iOS (Safari) / Android -->
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3612/3612580.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="JuegoAR">
   <meta name="theme-color" content="#000000">
 
-  <!-- Librerías de Realidad Aumentada (A-Frame + AR.js) -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-  <!-- Estilos CSS de la Aplicación -->
   <style>
     * {
       box-sizing: border-box;
       user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body, html {
@@ -37,94 +30,196 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    /* Interfaz Flotante (HUD) */
-    #ui-container {
+    /* Panel de Control Flotante (HUD) */
+    #hud {
       position: fixed;
-      top: 20px;
+      top: 15px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 9999;
-      text-align: center;
-      background: rgba(0, 0, 0, 0.75);
+      width: 90%;
+      max-width: 360px;
+      background: rgba(15, 23, 42, 0.85);
       color: #ffffff;
-      padding: 12px 24px;
-      border-radius: 20px;
-      backdrop-filter: blur(5px);
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-      pointer-events: none; /* Permite interactuar con el lienzo 3D detrás */
+      padding: 12px 20px;
+      border-radius: 16px;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      text-align: center;
+      pointer-events: none;
     }
 
-    #score-text {
-      font-size: 22px;
-      font-weight: bold;
-      margin: 0;
-      letter-spacing: 0.5px;
+    .hud-stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 800;
+      font-size: 18px;
     }
+
+    #timer-display { color: #f59e0b; }
+    #score-display { color: #10b981; }
 
     #instructions {
-      font-size: 13px;
-      margin-top: 4px;
-      color: #b0bec5;
+      font-size: 12px;
+      margin-top: 6px;
+      color: #94a3b8;
+    }
+
+    /* Pantalla de Fin de Juego */
+    #game-over-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 10000;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+
+    #game-over-modal h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+      color: #f43f5e;
+    }
+
+    .btn-restart {
+      margin-top: 20px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
     }
   </style>
 </head>
 <body>
 
-  <!-- Interfaz de Usuario flotante superior -->
-  <div id="ui-container">
-    <p id="score-text">Puntos: 0</p>
-    <div id="instructions">Apunta al marcador HIRO y toca el cubo</div>
+  <div id="hud">
+    <div class="hud-stats">
+      <span id="score-display">Gemas: 0</span>
+      <span id="timer-display">Tiempo: 30s</span>
+    </div>
+    <div id="instructions">Apunta al marcador HIRO y toca las gemas antes de que expiren</div>
   </div>
 
-  <!-- Escena de Realidad Aumentada -->
+  <div id="game-over-modal">
+    <h1>¡Tiempo Agotado!</h1>
+    <p id="final-score" style="font-size: 20px;">Conseguiste 0 gemas</p>
+    <button class="btn-restart" onclick="restartGame()">Jugar de Nuevo</button>
+  </div>
+
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-    
-    <!-- Marcador Estándar HIRO -->
     <a-marker preset="hiro">
-      <!-- Objeto Interactivo 3D (Cubo) -->
-      <a-box 
-        id="target-cube" 
-        position="0 0.5 0" 
-        material="color: #FF5722;" 
-        animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
-      </a-box>
+      <a-entity 
+        id="target-gem" 
+        geometry="primitive: octahedron; radius: 0.4"
+        material="color: #10b981; roughness: 0.2; metalness: 0.8" 
+        position="0 0.5 0"
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 2500">
+      </a-entity>
     </a-marker>
 
-    <!-- Cámara con raycaster para interacción táctil -->
-    <a-entity camera raycaster="objects: a-box" cursor="rayOrigin: mouse"></a-entity>
-    
+    <a-entity camera raycaster="objects: #target-gem" cursor="rayOrigin: mouse"></a-entity>
   </a-scene>
 
-  <!-- Lógica JavaScript del Juego y PWA -->
   <script>
-    // 1. LÓGICA DEL JUEGO
     let score = 0;
-    const colors = ['#FF5722', '#4CAF50', '#2196F3', '#9C27B0', '#FFEB3B', '#E91E63'];
-    
-    const cube = document.getElementById('target-cube');
-    const scoreDisplay = document.getElementById('score-text');
+    let timeLeft = 30;
+    let timerInterval = null;
+    let isGameActive = true;
 
-    cube.addEventListener('click', function () {
+    const gem = document.getElementById('target-gem');
+    const scoreDisplay = document.getElementById('score-display');
+    const timerDisplay = document.getElementById('timer-display');
+    const gameOverModal = document.getElementById('game-over-modal');
+    const finalScore = document.getElementById('final-score');
+
+    const gemColors = ['#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b'];
+
+    // Iniciar el temporizador
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = `Tiempo: ${timeLeft}s`;
+
+        if (timeLeft <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+
+    // Mover la gema a una posición aleatoria dentro del marcador
+    function respawnGem() {
+      const randomX = (Math.random() - 0.5) * 1.6; // Rango -0.8 a 0.8
+      const randomZ = (Math.random() - 0.5) * 1.6;
+      const randomY = 0.3 + Math.random() * 0.5;   // Altura variante
+
+      const randomColor = gemColors[Math.floor(Math.random() * gemColors.length)];
+
+      gem.setAttribute('position', `${randomX} ${randomY} ${randomZ}`);
+      gem.setAttribute('material', 'color', randomColor);
+    }
+
+    // Evento de toque/clic en la gema
+    gem.addEventListener('click', function () {
+      if (!isGameActive) return;
+
       score++;
-      scoreDisplay.textContent = `Puntos: ${score}`;
+      scoreDisplay.textContent = `Gemas: ${score}`;
 
-      // Cambio de color aleatorio
-      const randomColor = colors[Math.floor(Math.random() * colors.length)];
-      cube.setAttribute('material', 'color', randomColor);
-
-      // Feedback visual de toque
-      cube.setAttribute('scale', '1.3 1.3 1.3');
+      // Pequeña animación de impacto
+      gem.setAttribute('scale', '0.5 0.5 0.5');
       setTimeout(() => {
-        cube.setAttribute('scale', '1 1 1');
-      }, 150);
+        gem.setAttribute('scale', '1 1 1');
+        respawnGem();
+      }, 100);
     });
 
-    // 2. REGISTRO DEL SERVICE WORKER
+    // Finalizar el juego
+    function endGame() {
+      isGameActive = false;
+      clearInterval(timerInterval);
+      finalScore.textContent = `Conseguiste un total de ${score} gemas`;
+      gameOverModal.style.display = 'flex';
+      gem.setAttribute('visible', 'false');
+    }
+
+    // Reiniciar la partida
+    function restartGame() {
+      score = 0;
+      timeLeft = 30;
+      isGameActive = true;
+
+      scoreDisplay.textContent = 'Gemas: 0';
+      timerDisplay.textContent = 'Tiempo: 30s';
+      gameOverModal.style.display = 'none';
+      gem.setAttribute('visible', 'true');
+
+      respawnGem();
+      startTimer();
+    }
+
+    // Iniciar la cuenta regresiva al cargar la app
+    window.onload = startTimer;
+
+    // Registro del Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .then((reg) => console.log('Service Worker registrado correctamente:', reg.scope))
-          .catch((err) => console.error('Error al registrar el Service Worker:', err));
+          .catch((err) => console.error('Error al registrar SW:', err));
       });
     }
   </script>
