@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Caza de Gemas AR</title>
 
-  <!-- Permitir peticiones y scripts externos dentro de la APK (Solución a pantalla en blanco) -->
+  <!-- Permitir conexiones externas sin bloqueos en WebView / APK -->
   <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
 
-  <!-- PWA & Metas -->
+  <!-- Configuración PWA y Navegador -->
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3612/3612580.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#000000">
 
-  <!-- Librerías AR (Usando CDNjs/JSDelivr compatibles con WebView) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.2.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/aframe/build/aframe-ar.js"></script>
+  <!-- Librerías de Realidad Aumentada ultrarrápidas y estables -->
+  <script src="https://unpkg.com/aframe@1.3.0/dist/aframe-master.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/build/aframe-ar.min.js"></script>
 
   <style>
     * {
@@ -33,10 +33,10 @@
       height: 100%;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #000;
+      background-color: #000000;
     }
 
-    /* HUD */
+    /* Panel de Control Flotante (HUD) */
     #hud {
       position: fixed;
       top: 15px;
@@ -86,7 +86,7 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      color: white;
+      color: #ffffff;
       text-align: center;
       padding: 20px;
     }
@@ -113,7 +113,7 @@
 </head>
 <body>
 
-  <!-- HUD -->
+  <!-- HUD del Jugador -->
   <div id="hud">
     <div class="hud-stats">
       <span id="score-display">Gemas: 0</span>
@@ -122,7 +122,7 @@
     <div id="instructions">Apunta al marcador HIRO y toca las gemas rápidamente</div>
   </div>
 
-  <!-- Modal Resultados -->
+  <!-- Pantalla de Resultados -->
   <div id="game-over-modal">
     <h1>¡Tiempo Agotado!</h1>
     <p id="final-score" style="font-size: 20px;">Conseguiste 0 gemas</p>
@@ -132,10 +132,13 @@
   <!-- Escena de Realidad Aumentada -->
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;">
     
+    <!-- Marcador HIRO con suavizado de rastreo -->
     <a-marker preset="hiro" smooth="true" smoothCount="5" smoothTolerance="0.02" smoothThreshold="2">
       
+      <!-- Contenedor principal de la gema -->
       <a-entity id="gem-container" position="0 0.5 0">
         
+        <!-- Objeto visual (Gema) -->
         <a-entity 
           id="target-gem" 
           geometry="primitive: octahedron; radius: 0.4"
@@ -143,6 +146,7 @@
           animation="property: rotation; to: 0 360 0; loop: true; dur: 2500">
         </a-entity>
 
+        <!-- Hitbox invisible extra grande para toques fáciles -->
         <a-sphere 
           class="clickable"
           radius="0.8" 
@@ -154,11 +158,12 @@
 
     </a-marker>
 
+    <!-- Cámara táctil configurada para respuesta inmediata -->
     <a-entity camera raycaster="objects: .clickable; interval: 50;" cursor="rayOrigin: mouse; fuse: false"></a-entity>
 
   </a-scene>
 
-  <!-- Lógica -->
+  <!-- Lógica Interactiva -->
   <script>
     let score = 0;
     let timeLeft = 30;
