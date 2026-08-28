@@ -5,34 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Juego AR PWA</title>
 
-  <link rel="manifest" href='data:application/manifest+json,{
-    "name": "Juego AR PWA",
-    "short_name": "JuegoAR",
-    "start_url": "./",
-    "display": "standalone",
-    "background_color": "#000000",
-    "theme_color": "#000000",
-    "icons": [
-      {
-        "src": "https://aframe.io/images/aframe-logo-192.png",
-        "sizes": "192x192",
-        "type": "image/png"
-      },
-      {
-        "src": "https://aframe.io/images/aframe-logo-512.png",
-        "sizes": "512x512",
-        "type": "image/png"
-      }
-    ]
-  }'>
+  <!-- Enlace al Web App Manifest -->
+  <link rel="manifest" href="manifest.json">
 
+  <!-- Iconos para iOS (Safari) -->
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3612/3612580.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="JuegoAR">
+  <meta name="theme-color" content="#000000">
 
+  <!-- Librerías AR (A-Frame + AR.js) -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
+  <!-- Estilos CSS de la App -->
   <style>
     * {
       box-sizing: border-box;
@@ -48,7 +35,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    /* Interfaz Flotante (HUD) */
+    /* Interfaz de Usuario Flotante (HUD) */
     #ui-container {
       position: fixed;
       top: 20px;
@@ -62,7 +49,7 @@
       border-radius: 20px;
       backdrop-filter: blur(5px);
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-      pointer-events: none; /* Permite interactuar con el lienzo 3D detrás */
+      pointer-events: none;
     }
 
     #score-text {
@@ -81,14 +68,18 @@
 </head>
 <body>
 
+  <!-- Interfaz de usuario superior -->
   <div id="ui-container">
     <p id="score-text">Puntos: 0</p>
     <div id="instructions">Apunta al marcador HIRO y toca el cubo</div>
   </div>
 
+  <!-- Escena de Realidad Aumentada -->
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
     
+    <!-- Marcador Estándar HIRO -->
     <a-marker preset="hiro">
+      <!-- Elemento Interactivo 3D -->
       <a-box 
         id="target-cube" 
         position="0 0.5 0" 
@@ -97,55 +88,42 @@
       </a-box>
     </a-marker>
 
+    <!-- Cámara con raycaster para detección de clics/táctil -->
     <a-entity camera raycaster="objects: a-box" cursor="rayOrigin: mouse"></a-entity>
     
   </a-scene>
 
+  <!-- Lógica en JavaScript -->
   <script>
-    // --- LÓGICA DEL JUEGO ---
+    // 1. Lógica del Juego
     let score = 0;
     const colors = ['#FF5722', '#4CAF50', '#2196F3', '#9C27B0', '#FFEB3B', '#E91E63'];
     
     const cube = document.getElementById('target-cube');
     const scoreDisplay = document.getElementById('score-text');
 
-    // Evento táctil / clic sobre el elemento AR
     cube.addEventListener('click', function () {
       score++;
       scoreDisplay.textContent = `Puntos: ${score}`;
 
-      // Cambio aleatorio de color al pulsar
+      // Cambio de color aleatorio
       const randomColor = colors[Math.floor(Math.random() * colors.length)];
       cube.setAttribute('material', 'color', randomColor);
 
-      // Animación de feedback al tocar
+      // Efecto táctil
       cube.setAttribute('scale', '1.3 1.3 1.3');
       setTimeout(() => {
         cube.setAttribute('scale', '1 1 1');
       }, 150);
     });
 
-    // --- REGISTRO DEL SERVICE WORKER INLINE (Para habilitar PWA) ---
+    // 2. Registro del Service Worker
     if ('serviceWorker' in navigator) {
-      const swCode = `
-        const CACHE_NAME = 'ar-pwa-v1';
-        self.addEventListener('install', (e) => {
-          e.waitUntil(
-            caches.open(CACHE_NAME).then((cache) => cache.addAll(['./']))
-          );
-        });
-        self.addEventListener('fetch', (e) => {
-          e.respondWith(
-            caches.match(e.request).then((res) => res || fetch(e.request))
-          );
-        });
-      `;
-      const blob = new Blob([swCode], { type: 'application/javascript' });
-      const blobUrl = URL.createObjectURL(blob);
-
-      navigator.serviceWorker.register(blobUrl)
-        .then(() => console.log('Service Worker PWA registrado con éxito.'))
-        .catch((err) => console.log('Error al registrar Service Worker:', err));
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('Service Worker registrado correctamente:', reg.scope))
+          .catch((err) => console.error('Error al registrar el Service Worker:', err));
+      });
     }
   </script>
 
